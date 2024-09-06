@@ -9,7 +9,7 @@ in vec3 fragNormal;
 uniform vec3 ambientColor;
 uniform vec3 lightPosition;
 
-float ambientStrength = 0.01;
+float ambientStrength = 0.1;
 
 void main()
 {

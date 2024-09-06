@@ -1,6 +1,6 @@
 module chunk;
 
-import raylib: Vector3, Vector3Normalize, Vector3CrossProduct, Vector3Subtract, 
+import raylib: Vector3, Vector3Normalize, Vector3CrossProduct, Vector3Subtract, Vector3Scale,
                Color, Colors, 
                Mesh, UploadMesh, Model, LoadModelFromMesh, IsModelReady,
                BoundingBox, GetModelBoundingBox, Shader;
@@ -9,11 +9,7 @@ import std.math : abs;
 import std.random : uniform;
 import std.stdio : writeln;
 
-enum ChunkDimX = 20;
-enum ChunkDimY = 20;
-enum ChunkDimZ = 20;
-
-class Chunk {
+class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
 
     struct Triangle {
         Vector3[3] p; // Positions of the triangle vertices
@@ -112,7 +108,7 @@ class Chunk {
     }
 
     
-    void createMesh(Color color = Colors.WHITE) {
+    void createMesh(Color color = Colors.WHITE, bool invert_normals=false) {
         uint triangleCount = cast(uint) triangles.length;
         mesh.triangleCount = triangleCount;
         mesh.vertexCount = triangleCount * 3;
@@ -125,11 +121,9 @@ class Chunk {
         colors.length = mesh.vertexCount * Color.sizeof;
         foreach (uint n, t; triangles) {
             for (uint i = 0; i < 3; i++) {
-                Vector3 normal = Vector3Normalize(
-                    Vector3CrossProduct(
-                        Vector3Subtract(t.p[1], t.p[0]), 
-                        Vector3Subtract(t.p[2], t.p[0]))
-                );
+                Vector3 normal = Vector3Normalize( Vector3CrossProduct( Vector3Subtract(t.p[1], t.p[0]), Vector3Subtract(t.p[2], t.p[0])));
+                if(invert_normals) normal = Vector3Scale(normal, -1.0);
+
                 vertices[n * 9 + i * 3 + 0] = t.p[i].x;
                 vertices[n * 9 + i * 3 + 1] = t.p[i].y;
                 vertices[n * 9 + i * 3 + 2] = t.p[i].z;
@@ -225,5 +219,10 @@ class Chunk {
         data[12][1][11] = 0.5;
     }
 
-
+    void fillCorridor() {
+            data[1][1][1] = 1.0;
+            data[1][1][2] = 1.0;
+            data[2][1][1] = 1.0;
+            data[2][1][2] = 1.0;
+    }
 }

@@ -6,23 +6,24 @@ import chunk;
 import std.math : cos, sin;
 
 struct Lighting {
+	Vector3 ambientColor;
+	Vector3 lightPosition = Vector3(0.0, 20.0, 0.0);
 	Shader shader;
 	int ambientColorLoc;
-	Vector3 ambientColor;
 	int lightPosLoc;
-	Vector3 lightPosition = Vector3(0.0, 30.0, 0.0);
     float angle = 0.0;
 
     void setup() {
         shader = LoadShader("vs.glsl", "fs.glsl");
         lightPosLoc = GetShaderLocation(shader, "lightPosition");
+
         ambientColorLoc = GetShaderLocation(shader, "ambientColor");
-        ambientColor = Vector3(1.0, 1.0, 1.0);
+        ambientColor = Vector3(0.9, 0.9, 1.0);
         SetShaderValue(shader, ambientColorLoc, &ambientColor, ShaderUniformDataType.SHADER_UNIFORM_VEC3);
     }
 
     void update(float delta) {
-		angle = angle + delta;
+		angle = (angle + delta) % (PI * 2.0);
 		lightPosition.x = cos(angle) * 30.0;
 		lightPosition.z = sin(angle) * 30.0;
         SetShaderValue(shader, lightPosLoc, &lightPosition, ShaderUniformDataType.SHADER_UNIFORM_VEC3);
@@ -32,7 +33,7 @@ struct Lighting {
 class Scene {
     Renderable[] renderables;
     Lighting lighting = Lighting();
-    Renderable sun;
+    uint sunId;
 
 	float angle = 0;
 
@@ -48,8 +49,9 @@ class Scene {
 
     this() {
         lighting.setup();
-        sun = Renderable(RenderableType.Light, lighting.lightPosition);
-        renderables ~= sun;
+        renderables ~= Renderable(RenderableType.Light, lighting.lightPosition);
+
+        renderables ~= Renderable(RenderableType.Grid, Vector3Zero);
 
         Mesh cubeMesh = GenMeshCube(2.0, 2.0, 2.0);
         cubeModel = LoadModelFromMesh(cubeMesh);
@@ -57,11 +59,12 @@ class Scene {
         renderables ~= Renderable(RenderableType.Model, Vector3(0,0,0), cubeModel);
 
         // marching cube
-        Chunk chunk = new Chunk();
+        auto chunk = new Chunk!(20,20,20)();
         // chunk.fillWithSphere(Vector3(8,8,8), 4);
-        chunk.fillWithTerrain();
+        // chunk.fillWithTerrain();
+        chunk.fillCorridor();
         chunk.triangulate();
-        chunk.createMesh(Colors.RED);
+        chunk.createMesh(Colors.RED, true);
         chunk.createModel(Colors.RED, lighting.shader);
         renderables ~= Renderable(RenderableType.Model, Vector3(2,0,2), chunk.model);
     }
@@ -74,6 +77,6 @@ class Scene {
     void update(float delta) {
 	    UpdateCamera(&camera, CameraMode.CAMERA_FREE);
         lighting.update(delta);
-        sun.position = lighting.lightPosition;
+        renderables[sunId].position = lighting.lightPosition;
     }
 }
