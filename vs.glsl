@@ -12,8 +12,7 @@ uniform mat4 matModel;
 uniform mat4 matView;
 uniform mat4 matProjection;
 
-void main()
-{
+void main() {
     fragPosition = vec3(matModel * vec4(vertexPosition, 1.0));
     fragNormal = vertexNormal;  
     fragColor = vertexColor;
