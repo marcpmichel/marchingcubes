@@ -1,15 +1,15 @@
-module chunk;
+module marching_cube;
 
 import raylib: Vector3, Vector3Normalize, Vector3CrossProduct, Vector3Subtract, Vector3Scale,
                Color, Colors, 
-               Mesh, UploadMesh, Model, LoadModelFromMesh, IsModelReady,
+               Mesh, UploadMesh, Model, LoadModelFromMesh, IsModelReady, UnloadModel,
                BoundingBox, GetModelBoundingBox, Shader;
 import tables;
 import std.math : abs;
 import std.random : uniform;
 import std.stdio : writeln;
 
-class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
+class MarchingCube(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
 
     struct Triangle {
         Vector3[3] p; // Positions of the triangle vertices
@@ -77,7 +77,6 @@ class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
     Triangle[] triangles;
     Mesh mesh;
     Model model;
-    BoundingBox modelBB;
     bool meshCreated;
 
     this() {
@@ -108,7 +107,7 @@ class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
     }
 
     
-    void createMesh(Color color = Colors.WHITE, bool invert_normals=false) {
+    void createMesh(Color color = Colors.WHITE, bool inverted=false) {
         uint triangleCount = cast(uint) triangles.length;
         mesh.triangleCount = triangleCount;
         mesh.vertexCount = triangleCount * 3;
@@ -122,11 +121,11 @@ class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
         foreach (uint n, t; triangles) {
             for (uint i = 0; i < 3; i++) {
                 Vector3 normal = Vector3Normalize( Vector3CrossProduct( Vector3Subtract(t.p[1], t.p[0]), Vector3Subtract(t.p[2], t.p[0])));
-                if(invert_normals) normal = Vector3Scale(normal, -1.0);
+                if(inverted) normal = Vector3Scale(normal, -1.0);
 
-                vertices[n * 9 + i * 3 + 0] = t.p[i].x;
+                vertices[n * 9 + i * 3 + 0] = inverted ? t.p[i].z : t.p[i].x;
                 vertices[n * 9 + i * 3 + 1] = t.p[i].y;
-                vertices[n * 9 + i * 3 + 2] = t.p[i].z;
+                vertices[n * 9 + i * 3 + 2] = inverted ? t.p[i].x : t.p[i].z;
                 normals[n * 9 + i * 3 + 0] = normal.x;
                 normals[n * 9 + i * 3 + 1] = normal.y;
                 normals[n * 9 + i * 3 + 2] = normal.z;
@@ -156,73 +155,21 @@ class Chunk(uint ChunkDimX, uint ChunkDimY, uint ChunkDimZ) {
             writeln("Model is NOT ready !");
         }
         model.materials[0].shader = shader; // if you miss this, then the shader would not be applied to this object
-        modelBB = GetModelBoundingBox(model);
+    }
+    
+    void destroyModel() {
+        UnloadModel(model);
     }
 
-    void fillRandom() {
-        for (int x = 0; x < ChunkDimX; ++x) {
-            for (int y = 0; y < ChunkDimY; ++y) {
-                for (int z = 0; z < ChunkDimZ; ++z) {
-                    data[x][y][z] = 1.0; // 0.4 + uniform01 / 2.0;
-                }
+    void invertNormals() {
+        for (int i = 0; i < model.meshCount; i++) {
+            Mesh *m = &model.meshes[i];
+            for (int j = 0; j < m.vertexCount; j++) {
+                m.normals[j * 3] *= -1.0f;
+                m.normals[j * 3 + 1] *= -1.0f;
+                m.normals[j * 3 + 2] *= -1.0f;
             }
         }
     }
 
-
-    void fillWithSphere(Vector3 pos, uint radius) {
-        for (int x = 0; x < ChunkDimX; ++x) {
-            for (int y = 0; y < ChunkDimY; ++y) {
-                for (int z = 0; z < ChunkDimZ; ++z) {
-                    float dx = (x - pos.x);
-                    float dy = (y - pos.y);
-                    float dz = (z - pos.z);
-                    float value = dx * dx + dy * dy + dz * dz;
-                    data[x][y][z] = value <= (radius^2) ? 1.0 : 0.0;
-                }
-            }
-        }
-    }
-
-    void fillWithTerrain() {
-        /*
-        for (int x = 0; x < ChunkDimX; ++x) {
-            for (int y = 0; y < ChunkDimY; ++y) {
-                for (int z = 0; z < ChunkDimZ; ++z) {
-                    data[x][y][z] = 0.0f;
-                }
-            }
-        }
-        */
-        for (int x = 0; x < ChunkDimX; ++x) {
-            for (int z = 0; z < ChunkDimZ; ++z) {
-                // float a = (x+z) / 40.0;
-                data[x][1][z] = uniform(0.5, 1.0);
-            }
-        }
-
-        for(int x = 10; x < 14; x++) {
-            data[x][2][10] = 1.0;
-            data[x][2][13] = 1.0;
-            data[x][3][10] = 1.0;
-            data[x][3][13] = 1.0;
-        }
-        for(int y = 10; y < 14; y++) {
-            data[10][2][y] = 1.0;
-            data[13][2][y] = 1.0;
-            data[10][3][y] = 1.0;
-            data[13][3][y] = 1.0;
-        }
-        data[11][1][11] = 0.5;
-        data[11][1][12] = 0.5;
-        data[12][1][12] = 0.5;
-        data[12][1][11] = 0.5;
-    }
-
-    void fillCorridor() {
-            data[1][1][1] = 1.0;
-            data[1][1][2] = 1.0;
-            data[2][1][1] = 1.0;
-            data[2][1][2] = 1.0;
-    }
 }

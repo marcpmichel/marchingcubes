@@ -2,42 +2,25 @@ module scene;
 
 import raylib;
 import renderable;
-import chunk;
+import marching_cube;
+import reality;
 import std.math : cos, sin;
+import lighting;
+import std.range: front, popFront;
 
-struct Lighting {
-	Vector3 ambientColor;
-	Vector3 lightPosition = Vector3(0.0, 20.0, 0.0);
-	Shader shader;
-	int ambientColorLoc;
-	int lightPosLoc;
-    float angle = 0.0;
-
-    void setup() {
-        shader = LoadShader("vs.glsl", "fs.glsl");
-        lightPosLoc = GetShaderLocation(shader, "lightPosition");
-
-        ambientColorLoc = GetShaderLocation(shader, "ambientColor");
-        ambientColor = Vector3(0.9, 0.9, 1.0);
-        SetShaderValue(shader, ambientColorLoc, &ambientColor, ShaderUniformDataType.SHADER_UNIFORM_VEC3);
-    }
-
-    void update(float delta) {
-		angle = (angle + delta) % (PI * 2.0);
-		lightPosition.x = cos(angle) * 30.0;
-		lightPosition.z = sin(angle) * 30.0;
-        SetShaderValue(shader, lightPosLoc, &lightPosition, ShaderUniformDataType.SHADER_UNIFORM_VEC3);
-    }
-}
+enum SceneEvent { None, SetClearColor }
 
 class Scene {
     Renderable[] renderables;
+    uint renderableId = 0;
+    Color clearColor;
+    SceneEvent[] events;
+
     Lighting lighting = Lighting();
     uint sunId;
+    uint realityId;
 
 	float angle = 0;
-
-    Model cubeModel;
 
 	auto camera = Camera3D(
 			Vector3(0, 0, 8),             // Camera position
@@ -49,34 +32,34 @@ class Scene {
 
     this() {
         lighting.setup();
-        renderables ~= Renderable(RenderableType.Light, lighting.lightPosition);
-
-        renderables ~= Renderable(RenderableType.Grid, Vector3Zero);
-
-        Mesh cubeMesh = GenMeshCube(2.0, 2.0, 2.0);
-        cubeModel = LoadModelFromMesh(cubeMesh);
-        cubeModel.materials[0].shader = lighting.shader; // if you miss this, then the shader would not be applied to this object
-        renderables ~= Renderable(RenderableType.Model, Vector3(0,0,0), cubeModel);
-
-        // marching cube
-        auto chunk = new Chunk!(20,20,20)();
-        // chunk.fillWithSphere(Vector3(8,8,8), 4);
-        // chunk.fillWithTerrain();
-        chunk.fillCorridor();
-        chunk.triangulate();
-        chunk.createMesh(Colors.RED, true);
-        chunk.createModel(Colors.RED, lighting.shader);
-        renderables ~= Renderable(RenderableType.Model, Vector3(2,0,2), chunk.model);
     }
 
     ~this() {
-        UnloadModel(cubeModel);
-        UnloadShader(lighting.shader);
+        lighting.teardown();
+    }
+
+    final uint addRenderable(Renderable r) {
+        renderables ~= r;
+        return renderableId++;
+    }
+
+    void setClearColor(Color c) {
+        clearColor = c;
+        events ~= SceneEvent.SetClearColor;
+    }
+
+    bool hasEvents() { return events.length > 0; }
+    SceneEvent popEvent() { 
+        if(events.length < 1) return SceneEvent.None;
+        SceneEvent e=events.front; 
+        events.popFront; 
+        return e; 
     }
 
     void update(float delta) {
 	    UpdateCamera(&camera, CameraMode.CAMERA_FREE);
         lighting.update(delta);
         renderables[sunId].position = lighting.lightPosition;
+        renderables[realityId].position = Vector3(-2, 0, -2);
     }
 }
