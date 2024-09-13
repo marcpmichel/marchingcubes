@@ -13,12 +13,12 @@ import mesher;
 alias normalize = Vector3Normalize;
 
 enum BlockType {
-    Empty, Plain, SlopeS
+    Empty, Plain, SlopeS, SlopeE, SlopeN, SlopeW, DiagNW, DiagNE, DiagSE, DiagSW
 }
 
 struct Block {
     BlockType type;
-    float ceilHeight = 2.0;
+    float ceilHeight = 1.0;
     float floorHeight = 0.0;
     Color color = Colors.DARKGRAY;
 }
@@ -30,20 +30,42 @@ class Reality(uint Width, uint Height) {
     bool meshCreated = false;
 
     this() {
-        blocks[0][0].type = BlockType.SlopeS;
-        blocks[0][0].color = Colors.RED;
-        blocks[0][1].type = BlockType.SlopeS;
-        blocks[0][1].color = Colors.GREEN;
-        blocks[1][0].type = BlockType.Plain;
-        blocks[1][0].color = Colors.YELLOW;
-        blocks[1][1].type = BlockType.Plain;
-        blocks[1][1].color = Colors.BLUE;
+        void set(uint x, uint y, BlockType t, Color c) {
+            blocks[y][x].type = t;
+            blocks[y][x].color = c;
+        }
 
+        set(8,8, BlockType.Plain, Colors.PURPLE);
+
+        set(2,2, BlockType.Empty, Colors.GRAY);
+
+        set(2,1, BlockType.SlopeS, Colors.RED);
+        set(1,2, BlockType.SlopeW, Colors.BLUE);
+        set(3,2, BlockType.SlopeE, Colors.GREEN);
+        set(2,3, BlockType.SlopeN, Colors.YELLOW);
+
+        // set(5,5, BlockType.Empty, Colors.GRAY);
+        set(5,4, BlockType.DiagNE, Colors.RED);
+        set(6,4, BlockType.DiagNW, Colors.BLUE);
+        set(6,5, BlockType.DiagSW, Colors.GREEN);
+        set(5,5, BlockType.DiagSE, Colors.YELLOW);
     }
 
     Triangle[] triangulate() {
         Triangle[] tris;
         Color c;
+
+        Triangle tri(Vector3[] v, uint i1, uint i2, uint i3, Color c) {
+            return Triangle([v[i1], v[i2], v[i3]], c);
+        }
+        
+        Triangle[] quad(Vector3[] v, uint i0, uint i1, uint i2, uint i3, Color c) {
+            return [
+                Triangle([v[i1], v[i2], v[i3]], c),
+                Triangle([v[i2], v[i1], v[i0]], c)
+            ];
+        }
+
         for(int x=0; x<Width; x++) {
             for(int y=0; y<Height; y++) {
                 Block b = blocks[y][x];
@@ -54,79 +76,76 @@ class Reality(uint Width, uint Height) {
 
                 switch(b.type) {
                     case BlockType.Empty:
-                        // top
-                        // tris ~= Triangle([cv[3], cv[6], cv[7]], c);
-                        // tris ~= Triangle([cv[6], cv[3], cv[2]], c); 
-
-                        // bottom
-                        tris ~= Triangle([cv[5], cv[0], cv[1]], c);
-                        tris ~= Triangle([cv[0], cv[5], cv[4]], c); 
+                        tris ~= quad(cv, 0,4,1,5, c); // bottom
                     break;
 
                     case BlockType.Plain:
-                        // left
-                        tris ~= Triangle([cv[0], cv[3], cv[1]], c);
-                        tris ~= Triangle([cv[3], cv[0], cv[2]], c); 
-
-                        // right 
-                        tris ~= Triangle([cv[5], cv[6], cv[4]], c);
-                        tris ~= Triangle([cv[6], cv[5], cv[7]], c); 
-
-                        // front
-                        tris ~= Triangle([cv[4], cv[2], cv[0]], c);
-                        tris ~= Triangle([cv[2], cv[4], cv[6]], c); 
-
-                        // back
-                        tris ~= Triangle([cv[1], cv[7], cv[5]], c);
-                        tris ~= Triangle([cv[7], cv[1], cv[3]], c); 
-
-                        // top
-                        tris ~= Triangle([cv[3], cv[6], cv[7]], c);
-                        tris ~= Triangle([cv[6], cv[3], cv[2]], c); 
-
-                        // bottom
-                        tris ~= Triangle([cv[5], cv[0], cv[1]], c);
-                        tris ~= Triangle([cv[0], cv[5], cv[4]], c); 
+                        tris ~= quad(cv, 0,2,1,3, c); // left
+                        tris ~= quad(cv, 4,5,6,7, c); // right
+                        tris ~= quad(cv, 0,4,2,6, c); // front
+                        tris ~= quad(cv, 5,1,7,3, c); // back
+                        tris ~= quad(cv, 2,6,3,7, c); // top
+                        // tris ~= quad(cv, 5,4,1,0, c); // bottom
                     break;
 
                     case BlockType.SlopeS:
-                        tris ~= Triangle([cv[0], cv[3], cv[1]], c); // left
-                        tris ~= Triangle([cv[4], cv[7], cv[5]], c); // right
-
-                        tris ~= Triangle([cv[4], cv[3], cv[7]], c); // slant
-                        tris ~= Triangle([cv[4], cv[0], cv[3]], c); // slant
-
-                        tris ~= Triangle([cv[1], cv[7], cv[5]], c); // back
-                        tris ~= Triangle([cv[7], cv[1], cv[3]], c); 
-
-                        tris ~= Triangle([cv[5], cv[0], cv[1]], c); // bottom
-                        tris ~= Triangle([cv[0], cv[5], cv[4]], c); 
+                        tris ~= quad(cv, 0, 4, 3, 7, c);
+                        tris ~= quad(cv, 3, 7, 1, 5, c);
+                        // tris ~= quad(cv, 0, 1, 4, 5, c); // bottom
+                        tris ~= tri(cv, 5, 4, 7, c);
+                        tris ~= tri(cv, 0, 1, 3, c);
                     break;
 
                     case BlockType.SlopeE:
-                        // left
-                        tris ~= Triangle([cv[0], cv[3], cv[1]], c);
-                        tris ~= Triangle([cv[3], cv[0], cv[2]], c); 
+                        tris ~= quad(cv, 5, 3, 4, 2, c);
+                        // tris ~= quad(cv, 0, 1, 4, 5, c); // bottom
+                        tris ~= quad(cv, 0, 2, 1, 3, c);
+                        tris ~= tri(cv, 0, 2, 4, c);
+                        tris ~= tri(cv, 5, 3, 1, c);
+                    break;
 
-                        // right 
-                        tris ~= Triangle([cv[5], cv[6], cv[4]], c);
-                        tris ~= Triangle([cv[6], cv[5], cv[7]], c); 
+                    case BlockType.SlopeN:
+                        tris ~= tri(cv, 0, 1, 2, c);
+                        tris ~= tri(cv, 6, 5, 4, c);
+                        tris ~= quad(cv, 0, 4, 2, 6, c);
+                        tris ~= quad(cv, 2, 6, 1, 5, c);
+                        // tris ~= quad(cv, 0, 1, 4, 5, c); // bottom
+                    break;
 
-                        // front
-                        tris ~= Triangle([cv[4], cv[2], cv[0]], c);
-                        tris ~= Triangle([cv[2], cv[4], cv[6]], c); 
+                    case BlockType.SlopeW:
+                        tris ~= quad(cv, 0, 6, 1, 7, c);
+                        tris ~= tri(cv, 0, 6, 4, c);
+                        tris ~= tri(cv, 5, 7, 1, c);
+                        tris ~= quad(cv, 6, 4, 7, 5, c);
+                        // tris ~= quad(cv, 0, 1, 4, 5, c); // bottom
+                    break;
 
-                        // back
-                        tris ~= Triangle([cv[1], cv[7], cv[5]], c);
-                        tris ~= Triangle([cv[7], cv[1], cv[3]], c); 
+                    case BlockType.DiagNE:
+                        tris ~= quad(cv, 4,1,6,3, c);
+                        tris ~= quad(cv, 0,4,2,6, c);
+                        tris ~= quad(cv, 0,2,1,3, c);
+                        tris ~= tri(cv, 2, 3, 6, c);
+                    break;
 
-                        // top
-                        tris ~= Triangle([cv[3], cv[6], cv[7]], c);
-                        tris ~= Triangle([cv[6], cv[3], cv[2]], c); 
+                    case BlockType.DiagNW:
+                        tris ~= quad(cv, 0,2,5,7, c);
+                        tris ~= quad(cv, 0,4,2,6, c);
+                        tris ~= quad(cv, 4,5,6,7, c);
+                        tris ~= tri(cv, 2, 7, 6, c);
+                    break;
 
-                        // bottom
-                        tris ~= Triangle([cv[5], cv[0], cv[1]], c);
-                        tris ~= Triangle([cv[0], cv[5], cv[4]], c); 
+                    case BlockType.DiagSW:
+                        tris ~= quad(cv, 1,4,3,6, c);
+                        tris ~= quad(cv, 1,3,5,7, c);
+                        tris ~= quad(cv, 4,5,6,7, c);
+                        tris ~= tri(cv, 3, 7, 6, c);
+                    break;
+
+                    case BlockType.DiagSE:
+                        tris ~= quad(cv, 0,5,2,7, c);
+                        tris ~= quad(cv, 0,2,1,3, c);
+                        tris ~= quad(cv, 1,3,5,7, c);
+                        tris ~= tri(cv, 2, 3, 7, c);
                     break;
 
                     default:
@@ -155,7 +174,7 @@ class Reality(uint Width, uint Height) {
 
     void genModel(Shader shader) {
         Triangle[] triangles = triangulate();
-        Mesh mesh = createMesh(triangles);
+        Mesh mesh = createMesh(triangles, false);
         UploadMesh(&mesh, false);
         model = LoadModelFromMesh(mesh);
         // if(!IsModelReady(model)) { writeln("Model is NOT ready !"); }

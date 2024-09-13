@@ -29,7 +29,6 @@ class Scene {
 			60,                             // Camera field-of-view Y
 			CameraProjection.CAMERA_PERSPECTIVE);     // Camera mode type
 
-
     this() {
         lighting.setup();
     }
@@ -46,6 +45,9 @@ class Scene {
     void setClearColor(Color c) {
         clearColor = c;
         events ~= SceneEvent.SetClearColor;
+    }
+
+    void drawUI() {
     }
 
     bool hasEvents() { return events.length > 0; }

@@ -3,6 +3,9 @@ module renderer;
 import raylib;
 import renderable;
 import scene;
+import raygui;
+import std.string;
+
 
 struct Renderer {
 
@@ -51,6 +54,7 @@ struct Renderer {
                     }
                 }
 		    EndMode3D();
+            scene.drawUI();
 	    EndDrawing();
     }
 }

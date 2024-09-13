@@ -4,12 +4,14 @@ import scene;
 import scenes.marching_cube_scene;
 import scenes.reality_scene;
 import scenes.voxel_scene;
+import scenes.menu_scene;
 
 void main() {
 	Renderer renderer = Renderer(720, 480, "Marching Cubes");
 	// Scene scene = new MarchingCubeScene();
-	Scene scene = new RealityScene();
+	// Scene scene = new RealityScene();
 	// Scene scene = new VoxelScene();
+	Scene scene = new MenuScene();
 
     while(!WindowShouldClose()) {
 		scene.update(GetFrameTime());
